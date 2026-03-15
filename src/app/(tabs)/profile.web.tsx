@@ -1,4 +1,4 @@
-import { View, Text, StyleSheet, TouchableOpacity, Switch } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Switch } from 'react-native';
 import { Colors } from '../../constants/colors';
 import { getCurrentBadge, getNextBadge, getProgressToNext, BADGES } from '../../constants/badges';
 import { useWebStore } from '../../db/web-store';
@@ -15,7 +15,7 @@ export default function ProfileScreen() {
   const progress = getProgressToNext(stats.points);
 
   return (
-    <View style={styles.container}>
+    <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
       <HumorBanner screen="profile" />
 
       <View style={styles.content}>
@@ -91,7 +91,7 @@ export default function ProfileScreen() {
           />
         </View>
       </View>
-    </View>
+    </ScrollView>
   );
 }
 
@@ -99,6 +99,9 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: Colors.background,
+  },
+  scrollContent: {
+    paddingBottom: 40,
   },
   content: {
     padding: 16,
