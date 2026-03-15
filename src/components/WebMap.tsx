@@ -1,13 +1,11 @@
 import { useEffect, useRef, useCallback } from 'react';
-import { View, StyleSheet } from 'react-native';
 import L from 'leaflet';
 import type { Restroom } from '../types';
 import { getPanicLevel } from '../types';
 import { Colors } from '../constants/colors';
 
-const LEAFLET_CSS = `https://unpkg.com/leaflet@1.9.4/dist/leaflet.css`;
+const LEAFLET_CSS = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
 
-// Inject Leaflet CSS once
 let cssInjected = false;
 function injectCSS() {
   if (cssInjected) return;
@@ -17,51 +15,59 @@ function injectCSS() {
   link.href = LEAFLET_CSS;
   document.head.appendChild(link);
 
-  // Fix default marker icon paths (Leaflet CDN icons)
   const style = document.createElement('style');
   style.textContent = `
-    .leaflet-container { font-family: inherit; }
+    .leaflet-container { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
     .cs-popup .leaflet-popup-content-wrapper {
-      border-radius: 12px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-    }
-    .cs-popup .leaflet-popup-content { margin: 12px 16px; }
-    .cs-popup-name { font-weight: bold; color: #4A2F1A; font-size: 15px; margin-bottom: 4px; }
-    .cs-popup-rating { font-size: 14px; margin-bottom: 2px; }
-    .cs-popup-hint { font-size: 11px; color: #9E9E9E; font-style: italic; }
-    .cs-popup-btn {
-      display: inline-block; margin-top: 8px; padding: 6px 14px;
-      background: #4A2F1A; color: white; border-radius: 8px;
-      font-weight: bold; font-size: 12px; text-decoration: none; cursor: pointer;
+      border-radius: 14px; padding: 0;
+      box-shadow: 0 6px 20px rgba(0,0,0,0.18);
       border: none;
     }
-    .cs-popup-btn:hover { background: #8B6914; }
+    .cs-popup .leaflet-popup-tip { display: none; }
+    .cs-popup .leaflet-popup-content { margin: 0; min-width: 200px; }
+    .cs-popup-inner { padding: 14px 16px; }
+    .cs-popup-name {
+      font-weight: 700; color: ${Colors.brown}; font-size: 14px;
+      margin-bottom: 6px; line-height: 1.3;
+    }
+    .cs-popup-stats {
+      display: flex; gap: 8px; margin-bottom: 8px;
+      font-size: 12px; color: ${Colors.grayDark};
+    }
+    .cs-popup-stat { white-space: nowrap; }
+    .cs-popup-score {
+      display: inline-flex; align-items: center; gap: 4px;
+      font-weight: 700; font-size: 13px; margin-bottom: 8px;
+    }
+    .cs-popup-btn {
+      display: block; width: 100%; padding: 10px;
+      background: ${Colors.brown}; color: white; border-radius: 0 0 14px 14px;
+      font-weight: 700; font-size: 13px; text-align: center;
+      cursor: pointer; border: none; transition: background 0.15s;
+      letter-spacing: 0.3px;
+    }
+    .cs-popup-btn:hover { background: ${Colors.brownLight}; }
   `;
   document.head.appendChild(style);
 }
 
 function createMarkerIcon(overall: number): L.DivIcon {
   const level = getPanicLevel(overall);
-  const colors = {
-    green: Colors.panicGreen,
-    yellow: Colors.panicYellow,
-    red: Colors.panicRed,
-  };
-  const bg = colors[level];
-  const emoji = overall >= 3.5 ? '🟢' : overall >= 2.0 ? '🟡' : '🔴';
+  const bg = { green: Colors.panicGreen, yellow: Colors.panicYellow, red: Colors.panicRed }[level];
 
   return L.divIcon({
     className: '',
     html: `<div style="
-      width: 36px; height: 36px; border-radius: 50%;
-      background: ${bg}; border: 3px solid white;
+      width: 32px; height: 32px; border-radius: 50%;
+      background: ${bg}; border: 2.5px solid white;
       display: flex; align-items: center; justify-content: center;
-      font-size: 16px; box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-      cursor: pointer;
-    ">🚽</div>`,
-    iconSize: [36, 36],
-    iconAnchor: [18, 18],
-    popupAnchor: [0, -20],
+      font-size: 15px; box-shadow: 0 2px 6px rgba(0,0,0,0.25);
+      cursor: pointer; transition: transform 0.15s;
+    " onmouseover="this.style.transform='scale(1.2)'"
+       onmouseout="this.style.transform='scale(1)'">🚽</div>`,
+    iconSize: [32, 32],
+    iconAnchor: [16, 16],
+    popupAnchor: [0, -18],
   });
 }
 
@@ -76,42 +82,43 @@ export function WebMap({ restrooms, onRestroomPress, userLocation }: WebMapProps
   const mapRef = useRef<L.Map | null>(null);
   const markersRef = useRef<L.LayerGroup | null>(null);
 
-  // Initialize map
   useEffect(() => {
     injectCSS();
 
-    // Small delay to ensure CSS is loaded
     const timer = setTimeout(() => {
       if (!mapContainerRef.current || mapRef.current) return;
 
       const center: [number, number] = userLocation
         ? [userLocation.latitude, userLocation.longitude]
-        : [40.758, -73.9855]; // NYC default
+        : [40.758, -73.9855];
 
       const map = L.map(mapContainerRef.current, {
         center,
         zoom: 14,
         zoomControl: true,
+        scrollWheelZoom: true,
       });
 
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+        attribution: '© OpenStreetMap',
         maxZoom: 19,
       }).addTo(map);
 
       markersRef.current = L.layerGroup().addTo(map);
       mapRef.current = map;
 
-      // Add user location marker
       if (userLocation) {
         L.circleMarker([userLocation.latitude, userLocation.longitude], {
-          radius: 8,
+          radius: 7,
           fillColor: '#4285F4',
           color: 'white',
-          weight: 3,
+          weight: 2.5,
           fillOpacity: 1,
         }).addTo(map).bindPopup('📍 You are here');
       }
+
+      // Force a resize after CSS loads
+      setTimeout(() => map.invalidateSize(), 300);
     }, 100);
 
     return () => {
@@ -121,46 +128,50 @@ export function WebMap({ restrooms, onRestroomPress, userLocation }: WebMapProps
         mapRef.current = null;
       }
     };
-  }, []);  // eslint-disable-line react-hooks/exhaustive-deps
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Update markers when restrooms change
   useEffect(() => {
     if (!markersRef.current || !mapRef.current) return;
-
     markersRef.current.clearLayers();
 
-    for (const restroom of restrooms) {
-      const marker = L.marker([restroom.latitude, restroom.longitude], {
-        icon: createMarkerIcon(restroom.overall),
+    for (const r of restrooms) {
+      const marker = L.marker([r.latitude, r.longitude], {
+        icon: createMarkerIcon(r.overall),
       });
 
-      const ratingDot = restroom.overall >= 3.5 ? '🟢' : restroom.overall >= 2.0 ? '🟡' : '🔴';
+      const dot = r.overall >= 3.5 ? '🟢' : r.overall >= 2.0 ? '🟡' : '🔴';
 
       marker.bindPopup(
-        `<div class="cs-popup">
-          <div class="cs-popup-name">${restroom.name}</div>
-          <div class="cs-popup-rating">${ratingDot} ${restroom.overall.toFixed(1)} / 5</div>
-          <div class="cs-popup-hint">🧹 ${restroom.cleanliness.toFixed(1)} · 🚪 ${restroom.privacy.toFixed(1)} · 🔇 ${restroom.soundproofing.toFixed(1)}</div>
-          <button class="cs-popup-btn" data-id="${restroom.id}">View Details →</button>
-        </div>`,
-        { className: 'cs-popup' }
+        `<div class="cs-popup-inner">
+          <div class="cs-popup-name">${r.name}</div>
+          <div class="cs-popup-score">${dot} ${r.overall.toFixed(1)} / 5</div>
+          <div class="cs-popup-stats">
+            <span class="cs-popup-stat">🧹 ${r.cleanliness.toFixed(1)}</span>
+            <span class="cs-popup-stat">🚪 ${r.privacy.toFixed(1)}</span>
+            <span class="cs-popup-stat">🔇 ${r.soundproofing.toFixed(1)}</span>
+          </div>
+        </div>
+        <button class="cs-popup-btn" data-id="${r.id}">View Details →</button>`,
+        { className: 'cs-popup', closeButton: false }
       );
 
       marker.on('popupopen', () => {
-        // Attach click handler to the button inside the popup
         setTimeout(() => {
-          const btn = document.querySelector(`button[data-id="${restroom.id}"]`);
-          if (btn) {
-            btn.addEventListener('click', () => onRestroomPress(restroom.id));
-          }
+          const btn = document.querySelector(`button[data-id="${r.id}"]`);
+          if (btn) btn.addEventListener('click', () => onRestroomPress(r.id));
         }, 10);
       });
 
       marker.addTo(markersRef.current!);
     }
+
+    // Fit bounds to markers if we have them
+    if (restrooms.length > 0 && mapRef.current) {
+      const bounds = L.latLngBounds(restrooms.map((r) => [r.latitude, r.longitude] as [number, number]));
+      mapRef.current.fitBounds(bounds, { padding: [40, 40], maxZoom: 15 });
+    }
   }, [restrooms, onRestroomPress]);
 
-  // Recenter if user location updates
   useEffect(() => {
     if (mapRef.current && userLocation) {
       mapRef.current.setView([userLocation.latitude, userLocation.longitude], 14);
@@ -168,18 +179,9 @@ export function WebMap({ restrooms, onRestroomPress, userLocation }: WebMapProps
   }, [userLocation]);
 
   return (
-    <View style={styles.container}>
-      <div
-        ref={(el: HTMLDivElement | null) => { mapContainerRef.current = el; }}
-        style={{ width: '100%', height: '100%' }}
-      />
-    </View>
+    <div
+      ref={(el: HTMLDivElement | null) => { mapContainerRef.current = el; }}
+      style={{ width: '100%', height: '100%', minHeight: 300 }}
+    />
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    minHeight: 400,
-  },
-});

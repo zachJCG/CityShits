@@ -1,19 +1,11 @@
 import { useState, useEffect, useCallback } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  TouchableOpacity,
-  ScrollView,
-  useWindowDimensions,
-} from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
-import { Colors, PanicColors } from '../../constants/colors';
 import { useWebStore } from '../../db/web-store';
 import { FilterSheet, DEFAULT_FILTERS } from '../../components/FilterSheet';
 import { HumorBanner } from '../../components/HumorBanner';
 import { WebMap } from '../../components/WebMap';
 import { RatingEmojis } from '../../constants/ratings';
+import { Colors, PanicColors } from '../../constants/colors';
 import type { Restroom, FilterOptions } from '../../types';
 import { getPanicLevel } from '../../types';
 
@@ -24,29 +16,29 @@ export default function MapScreen() {
   const [filterVisible, setFilterVisible] = useState(false);
   const [filters, setFilters] = useState<FilterOptions>(DEFAULT_FILTERS);
   const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: number } | null>(null);
+  const [isWide, setIsWide] = useState(() => window.innerWidth > 800);
 
   const loadRestrooms = useCallback(() => {
     const hasFilters = Object.values(filters).some((v) => v > 0);
-    const data = hasFilters
-      ? store.getFilteredRestrooms(filters)
-      : store.getAllRestrooms();
-    setRestrooms(data);
+    setRestrooms(hasFilters ? store.getFilteredRestrooms(filters) : store.getAllRestrooms());
   }, [store, filters]);
 
-  useFocusEffect(
-    useCallback(() => {
-      loadRestrooms();
-    }, [loadRestrooms])
-  );
+  useFocusEffect(useCallback(() => { loadRestrooms(); }, [loadRestrooms]));
 
-  // Get user location
   useEffect(() => {
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (pos) => setUserLocation({ latitude: pos.coords.latitude, longitude: pos.coords.longitude }),
-        () => {} // silently fail
+        () => {}
       );
     }
+  }, []);
+
+  // Responsive listener
+  useEffect(() => {
+    const onResize = () => setIsWide(window.innerWidth > 800);
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
   }, []);
 
   const handleRestroomPress = useCallback(
@@ -55,269 +47,226 @@ export default function MapScreen() {
   );
 
   const hasActiveFilters = Object.values(filters).some((v) => v > 0);
-  const { width } = useWindowDimensions();
-  const isWide = width > 900;
 
   return (
-    <View style={styles.container}>
+    <div style={S.page}>
       <HumorBanner screen="map" />
 
-      {/* Top bar */}
-      <View style={styles.topBar}>
-        <Text style={styles.countText}>
-          🚽 {restrooms.length} throne{restrooms.length !== 1 ? 's' : ''} found
-        </Text>
-        <View style={styles.topBarRight}>
-          {/* Legend */}
-          <View style={styles.legend}>
-            <View style={styles.legendItem}>
-              <View style={[styles.legendDot, { backgroundColor: Colors.panicGreen }]} />
-              <Text style={styles.legendText}>Safe</Text>
-            </View>
-            <View style={styles.legendItem}>
-              <View style={[styles.legendDot, { backgroundColor: Colors.panicYellow }]} />
-              <Text style={styles.legendText}>Caution</Text>
-            </View>
-            <View style={styles.legendItem}>
-              <View style={[styles.legendDot, { backgroundColor: Colors.panicRed }]} />
-              <Text style={styles.legendText}>Danger</Text>
-            </View>
-          </View>
-          <TouchableOpacity
-            style={[styles.filterButton, hasActiveFilters && styles.filterButtonActive]}
-            onPress={() => setFilterVisible(true)}
+      {/* Header bar */}
+      <div style={S.header}>
+        <div style={S.headerLeft}>
+          <span style={S.logo}>🚽</span>
+          <span style={S.title}>
+            {restrooms.length} throne{restrooms.length !== 1 ? 's' : ''} nearby
+          </span>
+        </div>
+        <div style={S.headerRight}>
+          <div style={S.legend}>
+            {([['#4CAF50', 'Safe'], ['#FF9800', 'Meh'], ['#F44336', 'Yikes']] as const).map(([c, l]) => (
+              <span key={l} style={S.legendItem}>
+                <span style={{ ...S.legendDot, background: c }} />
+                <span style={S.legendLabel}>{l}</span>
+              </span>
+            ))}
+          </div>
+          <button
+            style={{
+              ...S.filterBtn,
+              ...(hasActiveFilters ? S.filterBtnActive : {}),
+            }}
+            onClick={() => setFilterVisible(true)}
           >
-            <Text style={styles.filterButtonText}>
-              🔍 {hasActiveFilters ? 'Filtered' : 'Filter'}
-            </Text>
-          </TouchableOpacity>
-        </View>
-      </View>
+            {hasActiveFilters ? '✨ Filtered' : '🔍 Filter'}
+          </button>
+        </div>
+      </div>
 
-      {/* Main content: map + list */}
-      <View style={[styles.main, isWide && styles.mainWide]}>
+      {/* Main content */}
+      <div style={{ ...S.main, ...(isWide ? S.mainWide : S.mainNarrow) }}>
         {/* Map */}
-        <View style={[styles.mapContainer, isWide && styles.mapContainerWide]}>
+        <div style={isWide ? S.mapWide : S.mapNarrow}>
           <WebMap
             restrooms={restrooms}
             onRestroomPress={handleRestroomPress}
             userLocation={userLocation}
           />
-        </View>
+        </div>
 
         {/* Card list */}
-        <ScrollView
-          style={[styles.list, isWide && styles.listWide]}
-          contentContainerStyle={styles.listContent}
-        >
-          {restrooms.length === 0 ? (
-            <View style={styles.empty}>
-              <Text style={styles.emptyEmoji}>🚽</Text>
-              <Text style={styles.emptyText}>
-                No thrones match your filters. Lower your standards?
-              </Text>
-            </View>
-          ) : (
-            restrooms.map((restroom) => {
-              const panicLevel = getPanicLevel(restroom.overall);
-              const emoji = RatingEmojis[Math.max(1, Math.min(5, Math.round(restroom.overall)))];
-              return (
-                <TouchableOpacity
-                  key={restroom.id}
-                  style={[styles.card, { borderLeftColor: PanicColors[panicLevel] }]}
-                  onPress={() => router.push(`/restroom/${restroom.id}`)}
-                  activeOpacity={0.7}
-                >
-                  <View style={styles.cardHeader}>
-                    <Text style={styles.cardName} numberOfLines={1}>
-                      {restroom.name}
-                    </Text>
-                    <View style={styles.cardRating}>
-                      <Text style={styles.cardEmoji}>{emoji}</Text>
-                      <Text style={styles.cardScore}>{restroom.overall.toFixed(1)}</Text>
-                    </View>
-                  </View>
-                  {restroom.description ? (
-                    <Text style={styles.cardDesc} numberOfLines={2}>
-                      {restroom.description}
-                    </Text>
-                  ) : null}
-                  <View style={styles.cardMeta}>
-                    <Text style={styles.cardMetaText}>🧹 {restroom.cleanliness.toFixed(1)}</Text>
-                    <Text style={styles.cardMetaText}>🚪 {restroom.privacy.toFixed(1)}</Text>
-                    <Text style={styles.cardMetaText}>🔇 {restroom.soundproofing.toFixed(1)}</Text>
-                    <Text style={styles.cardMetaText}>
-                      {restroom.requires_key ? '🔐 Key' : '🚪 Open'}
-                    </Text>
-                  </View>
-                </TouchableOpacity>
-              );
-            })
-          )}
-        </ScrollView>
-      </View>
+        <div style={isWide ? S.listWide : S.listNarrow}>
+          <div style={S.listInner}>
+            {restrooms.length === 0 ? (
+              <div style={S.empty}>
+                <div style={{ fontSize: 56 }}>🚽</div>
+                <p style={S.emptyText}>No thrones match your filters. Lower your standards?</p>
+              </div>
+            ) : (
+              restrooms.map((r) => (
+                <RestroomCard key={r.id} restroom={r} onPress={() => router.push(`/restroom/${r.id}`)} />
+              ))
+            )}
+          </div>
+        </div>
+      </div>
 
       <FilterSheet
         visible={filterVisible}
         filters={filters}
         onFiltersChange={setFilters}
-        onClose={() => {
-          setFilterVisible(false);
-          loadRestrooms();
-        }}
+        onClose={() => { setFilterVisible(false); loadRestrooms(); }}
         onReset={() => setFilters(DEFAULT_FILTERS)}
       />
-    </View>
+    </div>
   );
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Colors.background,
+function RestroomCard({ restroom, onPress }: { restroom: Restroom; onPress: () => void }) {
+  const panicLevel = getPanicLevel(restroom.overall);
+  const emoji = RatingEmojis[Math.max(1, Math.min(5, Math.round(restroom.overall)))];
+  const borderColor = PanicColors[panicLevel];
+
+  return (
+    <div style={{ ...S.card, borderLeftColor: borderColor }} onClick={onPress}>
+      <div style={S.cardTop}>
+        <span style={S.cardName}>{restroom.name}</span>
+        <span style={S.cardScore}>
+          <span>{emoji}</span>
+          <span style={S.cardScoreNum}>{restroom.overall.toFixed(1)}</span>
+        </span>
+      </div>
+      {restroom.description ? (
+        <p style={S.cardDesc}>{restroom.description}</p>
+      ) : null}
+      <div style={S.cardTags}>
+        <span style={S.tag}>🧹 {restroom.cleanliness.toFixed(1)}</span>
+        <span style={S.tag}>🚪 {restroom.privacy.toFixed(1)}</span>
+        <span style={S.tag}>🔇 {restroom.soundproofing.toFixed(1)}</span>
+        <span style={{ ...S.tag, ...(restroom.requires_key ? S.tagKey : {}) }}>
+          {restroom.requires_key ? '🔐 Key' : '🚪 Open'}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+// ── Styles (plain objects for <div> — no RN StyleSheet) ──
+
+const S: Record<string, React.CSSProperties> = {
+  page: {
+    display: 'flex',
+    flexDirection: 'column',
+    height: '100vh',
+    overflow: 'hidden',
+    background: '#FAF6F1',
+    fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
   },
-  topBar: {
-    flexDirection: 'row',
+
+  // Header
+  header: {
+    display: 'flex',
+    alignItems: 'center',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    backgroundColor: Colors.brown,
+    padding: '10px 16px',
+    background: Colors.brown,
+    flexShrink: 0,
+    flexWrap: 'wrap',
+    gap: 8,
   },
-  countText: {
-    color: Colors.white,
-    fontWeight: 'bold',
-    fontSize: 15,
-  },
-  topBarRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  legend: {
-    flexDirection: 'row',
-    gap: 10,
-  },
-  legendItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  legendDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-  },
-  legendText: {
-    fontSize: 11,
-    color: Colors.tabBarInactive,
-  },
-  filterButton: {
-    backgroundColor: Colors.white,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 16,
-  },
-  filterButtonActive: {
-    backgroundColor: Colors.yellow,
-  },
-  filterButtonText: {
-    fontWeight: 'bold',
-    color: Colors.brown,
+  headerLeft: { display: 'flex', alignItems: 'center', gap: 8 },
+  logo: { fontSize: 22 },
+  title: { color: 'white', fontWeight: 700, fontSize: 15, letterSpacing: 0.2 },
+  headerRight: { display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' },
+  legend: { display: 'flex', gap: 10, alignItems: 'center' },
+  legendItem: { display: 'flex', alignItems: 'center', gap: 4 },
+  legendDot: { width: 8, height: 8, borderRadius: '50%', display: 'inline-block' } as React.CSSProperties,
+  legendLabel: { fontSize: 11, color: 'rgba(255,255,255,0.75)' },
+  filterBtn: {
+    padding: '7px 16px',
+    borderRadius: 20,
+    border: 'none',
+    background: 'white',
+    fontWeight: 700,
     fontSize: 13,
+    cursor: 'pointer',
+    color: Colors.brown,
+    transition: 'all 0.15s',
   },
-  // Layout
-  main: {
-    flex: 1,
-  },
-  mainWide: {
-    flexDirection: 'row',
-  },
-  mapContainer: {
-    height: 400,
-  },
-  mapContainerWide: {
-    flex: 1,
-    height: 'auto' as any,
-  },
-  list: {
-    flex: 1,
-  },
+  filterBtnActive: { background: Colors.yellow, color: Colors.brown },
+
+  // Main layout
+  main: { flex: 1, overflow: 'hidden' },
+  mainWide: { display: 'flex', flexDirection: 'row' } as React.CSSProperties,
+  mainNarrow: { display: 'flex', flexDirection: 'column' } as React.CSSProperties,
+
+  // Map
+  mapWide: { flex: 1, minHeight: 0 },
+  mapNarrow: { height: '50vh', minHeight: 280, flexShrink: 0 },
+
+  // List
   listWide: {
-    width: 380,
-    maxWidth: 380,
-    borderLeftWidth: 1,
-    borderLeftColor: Colors.grayLight,
-  },
-  listContent: {
+    width: 360,
+    flexShrink: 0,
+    overflowY: 'auto',
+    borderLeft: `1px solid ${Colors.grayLight}`,
+    background: '#FAF6F1',
+  } as React.CSSProperties,
+  listNarrow: {
+    flex: 1,
+    overflowY: 'auto',
+    background: '#FAF6F1',
+  } as React.CSSProperties,
+  listInner: {
     padding: 12,
+    display: 'flex',
+    flexDirection: 'column',
     gap: 10,
-  },
-  empty: {
-    alignItems: 'center',
-    paddingTop: 60,
-  },
-  emptyEmoji: {
-    fontSize: 64,
-    marginBottom: 16,
-  },
-  emptyText: {
-    fontSize: 16,
-    color: Colors.gray,
-    fontStyle: 'italic',
-    textAlign: 'center',
-  },
+  } as React.CSSProperties,
+
+  // Empty
+  empty: { textAlign: 'center', paddingTop: 48 } as React.CSSProperties,
+  emptyText: { fontSize: 15, color: Colors.gray, fontStyle: 'italic', marginTop: 8 },
+
+  // Card
   card: {
-    backgroundColor: Colors.white,
+    background: 'white',
     borderRadius: 12,
-    padding: 14,
-    borderLeftWidth: 4,
-    shadowColor: Colors.black,
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.08,
-    shadowRadius: 4,
-    elevation: 2,
+    padding: '12px 14px',
+    borderLeft: '4px solid',
+    cursor: 'pointer',
+    transition: 'transform 0.12s, box-shadow 0.12s',
+    boxShadow: '0 1px 4px rgba(0,0,0,0.06)',
   },
-  cardHeader: {
-    flexDirection: 'row',
+  cardTop: {
+    display: 'flex',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 4,
+    gap: 8,
   },
   cardName: {
-    fontSize: 15,
-    fontWeight: 'bold',
-    color: Colors.brown,
-    flex: 1,
-    marginRight: 8,
-  },
-  cardRating: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  cardEmoji: {
-    fontSize: 16,
-  },
-  cardScore: {
+    fontWeight: 700,
     fontSize: 14,
-    fontWeight: 'bold',
-    color: Colors.brownLight,
-  },
+    color: Colors.brown,
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    whiteSpace: 'nowrap',
+    flex: 1,
+  } as React.CSSProperties,
+  cardScore: { display: 'flex', alignItems: 'center', gap: 4, flexShrink: 0 },
+  cardScoreNum: { fontWeight: 700, fontSize: 14, color: Colors.brownLight },
   cardDesc: {
     fontSize: 12,
     color: Colors.grayDark,
     fontStyle: 'italic',
-    marginBottom: 6,
-    lineHeight: 16,
-  },
-  cardMeta: {
-    flexDirection: 'row',
-    gap: 10,
-  },
-  cardMetaText: {
-    fontSize: 12,
-    color: Colors.brownLight,
-    fontWeight: '600',
-  },
-});
+    margin: '0 0 6px',
+    lineHeight: 1.4,
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    display: '-webkit-box',
+    WebkitLineClamp: 2,
+    WebkitBoxOrient: 'vertical',
+  } as React.CSSProperties,
+  cardTags: { display: 'flex', gap: 8, flexWrap: 'wrap' } as React.CSSProperties,
+  tag: { fontSize: 12, color: Colors.brownLight, fontWeight: 600 },
+  tagKey: { color: Colors.panicRed },
+};
