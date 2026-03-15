@@ -75,9 +75,10 @@ interface WebMapProps {
   restrooms: Restroom[];
   onRestroomPress: (id: string) => void;
   userLocation?: { latitude: number; longitude: number } | null;
+  interactive?: boolean; // full interaction (drag/scroll zoom) — default true
 }
 
-export function WebMap({ restrooms, onRestroomPress, userLocation }: WebMapProps) {
+export function WebMap({ restrooms, onRestroomPress, userLocation, interactive = true }: WebMapProps) {
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<L.Map | null>(null);
   const markersRef = useRef<L.LayerGroup | null>(null);
@@ -96,7 +97,9 @@ export function WebMap({ restrooms, onRestroomPress, userLocation }: WebMapProps
         center,
         zoom: 14,
         zoomControl: true,
-        scrollWheelZoom: true,
+        scrollWheelZoom: interactive,
+        dragging: interactive,
+        touchZoom: true,
       });
 
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {

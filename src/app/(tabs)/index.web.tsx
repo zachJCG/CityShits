@@ -82,32 +82,38 @@ export default function MapScreen() {
       </div>
 
       {/* Main content */}
-      <div style={{ ...S.main, ...(isWide ? S.mainWide : S.mainNarrow) }}>
-        {/* Map */}
-        <div style={isWide ? S.mapWide : S.mapNarrow}>
-          <WebMap
-            restrooms={restrooms}
-            onRestroomPress={handleRestroomPress}
-            userLocation={userLocation}
-          />
-        </div>
-
-        {/* Card list */}
-        <div style={isWide ? S.listWide : S.listNarrow}>
-          <div style={S.listInner}>
-            {restrooms.length === 0 ? (
-              <div style={S.empty}>
-                <div style={{ fontSize: 56 }}>🚽</div>
-                <p style={S.emptyText}>No thrones match your filters. Lower your standards?</p>
-              </div>
-            ) : (
-              restrooms.map((r) => (
-                <RestroomCard key={r.id} restroom={r} onPress={() => router.push(`/restroom/${r.id}`)} />
-              ))
-            )}
+      {isWide ? (
+        /* Wide: side-by-side, map fills left, scrollable card sidebar */
+        <div style={S.mainWide}>
+          <div style={S.mapWide}>
+            <WebMap
+              restrooms={restrooms}
+              onRestroomPress={handleRestroomPress}
+              userLocation={userLocation}
+            />
+          </div>
+          <div style={S.listWide}>
+            <div style={S.listInner}>
+              <CardList restrooms={restrooms} router={router} />
+            </div>
           </div>
         </div>
-      </div>
+      ) : (
+        /* Narrow: single scrollable column — map + cards flow together */
+        <div style={S.mainNarrow}>
+          <div style={S.mapNarrow}>
+            <WebMap
+              restrooms={restrooms}
+              onRestroomPress={handleRestroomPress}
+              userLocation={userLocation}
+              interactive={false}
+            />
+          </div>
+          <div style={S.listInner}>
+            <CardList restrooms={restrooms} router={router} />
+          </div>
+        </div>
+      )}
 
       <FilterSheet
         visible={filterVisible}
@@ -117,6 +123,24 @@ export default function MapScreen() {
         onReset={() => setFilters(DEFAULT_FILTERS)}
       />
     </div>
+  );
+}
+
+function CardList({ restrooms, router }: { restrooms: Restroom[]; router: ReturnType<typeof useRouter> }) {
+  if (restrooms.length === 0) {
+    return (
+      <div style={S.empty}>
+        <div style={{ fontSize: 56 }}>🚽</div>
+        <p style={S.emptyText}>No thrones match your filters. Lower your standards?</p>
+      </div>
+    );
+  }
+  return (
+    <>
+      {restrooms.map((r) => (
+        <RestroomCard key={r.id} restroom={r} onPress={() => router.push(`/restroom/${r.id}`)} />
+      ))}
+    </>
   );
 }
 
@@ -193,26 +217,31 @@ const S: Record<string, React.CSSProperties> = {
   },
   filterBtnActive: { background: Colors.yellow, color: Colors.brown },
 
-  // Main layout
-  main: { flex: 1, overflow: 'hidden' },
-  mainWide: { display: 'flex', flexDirection: 'row' } as React.CSSProperties,
-  mainNarrow: { display: 'flex', flexDirection: 'column' } as React.CSSProperties,
+  // Wide: side-by-side, fills remaining viewport
+  mainWide: {
+    display: 'flex',
+    flexDirection: 'row',
+    flex: 1,
+    overflow: 'hidden',
+  } as React.CSSProperties,
+
+  // Narrow: single scrollable column
+  mainNarrow: {
+    flex: 1,
+    overflowY: 'auto',
+    WebkitOverflowScrolling: 'touch',
+  } as React.CSSProperties,
 
   // Map
   mapWide: { flex: 1, minHeight: 0 },
-  mapNarrow: { height: '50vh', minHeight: 280, flexShrink: 0 },
+  mapNarrow: { height: '55vh', minHeight: 280 },
 
-  // List
+  // List (wide only — narrow cards just flow in the scroll)
   listWide: {
     width: 360,
     flexShrink: 0,
     overflowY: 'auto',
     borderLeft: `1px solid ${Colors.grayLight}`,
-    background: '#FAF6F1',
-  } as React.CSSProperties,
-  listNarrow: {
-    flex: 1,
-    overflowY: 'auto',
     background: '#FAF6F1',
   } as React.CSSProperties,
   listInner: {
