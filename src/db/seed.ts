@@ -1,7 +1,7 @@
 import type { SQLiteDatabase } from 'expo-sqlite';
 import { v4 as uuid } from 'uuid';
 
-interface SeedRestroom {
+export interface SeedRestroom {
   name: string;
   description: string;
   lat: number;
@@ -11,7 +11,7 @@ interface SeedRestroom {
   reviews: { cleanliness: number; privacy: number; soundproofing: number; comment: string }[];
 }
 
-const SEED_DATA: SeedRestroom[] = [
+export const SEED_DATA: SeedRestroom[] = [
   {
     name: 'The Porcelain Palace (Starbucks)',
     description: 'Premium pooping at its finest. The baristas judge you, but the throne does not.',
