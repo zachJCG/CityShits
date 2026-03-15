@@ -42,12 +42,31 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
+        name="panic"
+        options={{
+          title: 'Code Brown',
+          tabBarLabel: 'Panic',
+          tabBarIcon: ({ focused }) => <TabIcon emoji="🚨" focused={focused} />,
+          headerTitle: '🚨 Code Brown',
+          headerStyle: { backgroundColor: '#2D1010' },
+        }}
+      />
+      <Tabs.Screen
         name="add"
         options={{
           title: 'Drop a Pin',
           tabBarLabel: 'Add',
           tabBarIcon: ({ focused }) => <TabIcon emoji="📍" focused={focused} />,
           headerTitle: '📍 Add a Throne',
+        }}
+      />
+      <Tabs.Screen
+        name="profile"
+        options={{
+          title: 'Profile',
+          tabBarLabel: 'Profile',
+          tabBarIcon: ({ focused }) => <TabIcon emoji="👑" focused={focused} />,
+          headerTitle: '👑 Your Legacy',
         }}
       />
     </Tabs>

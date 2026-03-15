@@ -30,6 +30,18 @@ export interface FilterOptions {
   minSoundproofing: number;
 }
 
+export interface UserStats {
+  points: number;
+  reviews_count: number;
+  restrooms_count: number;
+}
+
+export const DEFAULT_STATS: UserStats = {
+  points: 0,
+  reviews_count: 0,
+  restrooms_count: 0,
+};
+
 export type PanicLevel = 'green' | 'yellow' | 'red';
 
 export function getPanicLevel(overall: number): PanicLevel {

@@ -1,15 +1,17 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import {
   View,
   Text,
   StyleSheet,
   TouchableOpacity,
   ScrollView,
+  useWindowDimensions,
 } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { Colors, PanicColors } from '../../constants/colors';
 import { useWebStore } from '../../db/web-store';
 import { FilterSheet, DEFAULT_FILTERS } from '../../components/FilterSheet';
+import { HumorBanner } from '../../components/HumorBanner';
 import { RatingEmojis } from '../../constants/ratings';
 import type { Restroom, FilterOptions } from '../../types';
 import { getPanicLevel } from '../../types';
@@ -36,9 +38,13 @@ export default function MapScreen() {
   );
 
   const hasActiveFilters = Object.values(filters).some((v) => v > 0);
+  const { width } = useWindowDimensions();
+  const isWide = width > 700;
 
   return (
     <View style={styles.container}>
+      <HumorBanner screen="map" />
+
       {/* Top bar */}
       <View style={styles.topBar}>
         <Text style={styles.countText}>
@@ -71,7 +77,7 @@ export default function MapScreen() {
       </View>
 
       {/* Restroom List */}
-      <ScrollView style={styles.list} contentContainerStyle={styles.listContent}>
+      <ScrollView style={styles.list} contentContainerStyle={[styles.listContent, isWide && styles.listContentWide]}>
         {restrooms.length === 0 ? (
           <View style={styles.empty}>
             <Text style={styles.emptyEmoji}>🚽</Text>
@@ -84,7 +90,7 @@ export default function MapScreen() {
             return (
               <TouchableOpacity
                 key={restroom.id}
-                style={[styles.card, { borderLeftColor: PanicColors[panicLevel] }]}
+                style={[styles.card, { borderLeftColor: PanicColors[panicLevel] }, isWide && styles.cardWide]}
                 onPress={() => router.push(`/restroom/${restroom.id}`)}
                 activeOpacity={0.7}
               >
@@ -195,6 +201,13 @@ const styles = StyleSheet.create({
   listContent: {
     padding: 16,
     gap: 12,
+    maxWidth: 900,
+    alignSelf: 'center',
+    width: '100%',
+  },
+  listContentWide: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
   },
   empty: {
     alignItems: 'center',
@@ -209,6 +222,9 @@ const styles = StyleSheet.create({
     color: Colors.gray,
     fontStyle: 'italic',
     textAlign: 'center',
+  },
+  cardWide: {
+    width: '48%',
   },
   card: {
     backgroundColor: Colors.white,

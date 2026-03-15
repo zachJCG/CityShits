@@ -30,6 +30,16 @@ export async function migrateDbIfNeeded(db: SQLiteDatabase) {
       created_at TEXT NOT NULL DEFAULT (datetime('now')),
       FOREIGN KEY (restroom_id) REFERENCES restrooms(id)
     );
+
+    CREATE TABLE IF NOT EXISTS user_stats (
+      id INTEGER PRIMARY KEY CHECK (id = 1),
+      points INTEGER NOT NULL DEFAULT 0,
+      reviews_count INTEGER NOT NULL DEFAULT 0,
+      restrooms_count INTEGER NOT NULL DEFAULT 0
+    );
+
+    INSERT OR IGNORE INTO user_stats (id, points, reviews_count, restrooms_count)
+    VALUES (1, 0, 0, 0);
   `);
 
   // Seed if empty

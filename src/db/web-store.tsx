@@ -1,7 +1,15 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import { v4 as uuid } from 'uuid';
 import { SEED_DATA } from './seed';
-import type { Restroom, Review, FilterOptions } from '../types';
+import type { Restroom, Review, FilterOptions, UserStats } from '../types';
+import { DEFAULT_STATS } from '../types';
+import { POINTS } from '../constants/badges';
+
+const STORAGE_KEYS = {
+  restrooms: 'cityshits_restrooms',
+  reviews: 'cityshits_reviews',
+  stats: 'cityshits_stats',
+};
 
 interface WebStoreContextValue {
   getAllRestrooms: () => Restroom[];
@@ -11,6 +19,8 @@ interface WebStoreContextValue {
   getReviewsForRestroom: (id: string) => Review[];
   addReview: (data: Omit<Review, 'created_at'>) => void;
   updateRestroomAverages: (id: string) => void;
+  getStats: () => UserStats;
+  addPoints: (amount: number) => void;
 }
 
 const WebStoreContext = createContext<WebStoreContextValue | null>(null);
@@ -19,6 +29,21 @@ export function useWebStore(): WebStoreContextValue {
   const ctx = useContext(WebStoreContext);
   if (!ctx) throw new Error('useWebStore must be used within WebStoreProvider');
   return ctx;
+}
+
+function loadFromStorage<T>(key: string): T | null {
+  try {
+    const raw = localStorage.getItem(key);
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
+function saveToStorage(key: string, data: unknown) {
+  try {
+    localStorage.setItem(key, JSON.stringify(data));
+  } catch {}
 }
 
 function buildSeedData(): { restrooms: Restroom[]; reviews: Review[] } {
@@ -66,12 +91,39 @@ function buildSeedData(): { restrooms: Restroom[]; reviews: Review[] } {
 export function WebStoreProvider({ children }: { children: ReactNode }) {
   const [restrooms, setRestrooms] = useState<Restroom[]>([]);
   const [reviews, setReviews] = useState<Review[]>([]);
+  const [stats, setStats] = useState<UserStats>(DEFAULT_STATS);
+
+  // Load from localStorage or seed
+  useEffect(() => {
+    const savedRestrooms = loadFromStorage<Restroom[]>(STORAGE_KEYS.restrooms);
+    const savedReviews = loadFromStorage<Review[]>(STORAGE_KEYS.reviews);
+    const savedStats = loadFromStorage<UserStats>(STORAGE_KEYS.stats);
+
+    if (savedRestrooms && savedRestrooms.length > 0) {
+      setRestrooms(savedRestrooms);
+      setReviews(savedReviews ?? []);
+      setStats(savedStats ?? DEFAULT_STATS);
+    } else {
+      const seed = buildSeedData();
+      setRestrooms(seed.restrooms);
+      setReviews(seed.reviews);
+      saveToStorage(STORAGE_KEYS.restrooms, seed.restrooms);
+      saveToStorage(STORAGE_KEYS.reviews, seed.reviews);
+    }
+  }, []);
+
+  // Persist on changes
+  useEffect(() => {
+    if (restrooms.length > 0) saveToStorage(STORAGE_KEYS.restrooms, restrooms);
+  }, [restrooms]);
 
   useEffect(() => {
-    const seed = buildSeedData();
-    setRestrooms(seed.restrooms);
-    setReviews(seed.reviews);
-  }, []);
+    if (reviews.length > 0) saveToStorage(STORAGE_KEYS.reviews, reviews);
+  }, [reviews]);
+
+  useEffect(() => {
+    saveToStorage(STORAGE_KEYS.stats, stats);
+  }, [stats]);
 
   const getAllRestrooms = useCallback((): Restroom[] => {
     return [...restrooms].sort((a, b) => b.overall - a.overall);
@@ -108,6 +160,11 @@ export function WebStoreProvider({ children }: { children: ReactNode }) {
         created_at: new Date().toISOString(),
       };
       setRestrooms((prev) => [...prev, newRestroom]);
+      setStats((prev) => ({
+        ...prev,
+        points: prev.points + POINTS.ADD_RESTROOM,
+        restrooms_count: prev.restrooms_count + 1,
+      }));
     },
     []
   );
@@ -121,13 +178,24 @@ export function WebStoreProvider({ children }: { children: ReactNode }) {
     [reviews]
   );
 
-  const addReviewFn = useCallback((data: Omit<Review, 'created_at'>) => {
-    const newReview: Review = {
-      ...data,
-      created_at: new Date().toISOString(),
-    };
-    setReviews((prev) => [...prev, newReview]);
-  }, []);
+  const addReviewFn = useCallback(
+    (data: Omit<Review, 'created_at'>) => {
+      const newReview: Review = {
+        ...data,
+        created_at: new Date().toISOString(),
+      };
+      setReviews((prev) => [...prev, newReview]);
+
+      const existingReviews = reviews.filter((r) => r.restroom_id === data.restroom_id);
+      const bonus = existingReviews.length === 0 ? POINTS.FIRST_REVIEW_BONUS : 0;
+      setStats((prev) => ({
+        ...prev,
+        points: prev.points + POINTS.WRITE_REVIEW + bonus,
+        reviews_count: prev.reviews_count + 1,
+      }));
+    },
+    [reviews]
+  );
 
   const updateRestroomAverages = useCallback(
     (id: string) => {
@@ -139,18 +207,17 @@ export function WebStoreProvider({ children }: { children: ReactNode }) {
           const avgC = rRevs.reduce((s, rev) => s + rev.cleanliness, 0) / rRevs.length;
           const avgP = rRevs.reduce((s, rev) => s + rev.privacy, 0) / rRevs.length;
           const avgS = rRevs.reduce((s, rev) => s + rev.soundproofing, 0) / rRevs.length;
-          return {
-            ...r,
-            cleanliness: avgC,
-            privacy: avgP,
-            soundproofing: avgS,
-            overall: (avgC + avgP + avgS) / 3,
-          };
+          return { ...r, cleanliness: avgC, privacy: avgP, soundproofing: avgS, overall: (avgC + avgP + avgS) / 3 };
         })
       );
     },
     [reviews]
   );
+
+  const getStatsFn = useCallback(() => stats, [stats]);
+  const addPointsFn = useCallback((amount: number) => {
+    setStats((prev) => ({ ...prev, points: prev.points + amount }));
+  }, []);
 
   const value: WebStoreContextValue = {
     getAllRestrooms,
@@ -160,6 +227,8 @@ export function WebStoreProvider({ children }: { children: ReactNode }) {
     getReviewsForRestroom,
     addReview: addReviewFn,
     updateRestroomAverages,
+    getStats: getStatsFn,
+    addPoints: addPointsFn,
   };
 
   return <WebStoreContext.Provider value={value}>{children}</WebStoreContext.Provider>;

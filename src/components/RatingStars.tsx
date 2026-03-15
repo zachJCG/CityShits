@@ -24,8 +24,8 @@ export function RatingStars({ value, onChange, size = 28, label }: RatingStarsPr
               onPress={interactive ? () => onChange!(star) : undefined}
               style={styles.star}
             >
-              <Text style={{ fontSize: size, opacity: filled ? 1 : 0.3 }}>
-                {filled ? '💩' : '💩'}
+              <Text style={{ fontSize: size, opacity: filled ? 1 : 0.25 }}>
+                {filled ? '💩' : '🪹'}
               </Text>
             </StarWrapper>
           );

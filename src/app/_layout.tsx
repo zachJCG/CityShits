@@ -3,6 +3,7 @@ import { SQLiteProvider } from 'expo-sqlite';
 import { StatusBar } from 'expo-status-bar';
 import { migrateDbIfNeeded } from '../db/database';
 import { Colors } from '../constants/colors';
+import { HumorProvider } from '../context/HumorContext';
 import { View, Text, ActivityIndicator, StyleSheet } from 'react-native';
 import { Suspense } from 'react';
 
@@ -20,6 +21,7 @@ export default function RootLayout() {
   return (
     <Suspense fallback={<LoadingFallback />}>
       <SQLiteProvider databaseName="cityshits.db" onInit={migrateDbIfNeeded}>
+        <HumorProvider>
         <StatusBar style="light" />
         <Stack
           screenOptions={{
@@ -38,6 +40,7 @@ export default function RootLayout() {
             }}
           />
         </Stack>
+        </HumorProvider>
       </SQLiteProvider>
     </Suspense>
   );

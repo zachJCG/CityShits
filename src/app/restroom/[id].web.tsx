@@ -14,6 +14,8 @@ import { RatingBadge } from '../../components/RatingBadge';
 import { RatingStars } from '../../components/RatingStars';
 import { ReviewCard } from '../../components/ReviewCard';
 import { useWebStore } from '../../db/web-store';
+import { WhiteNoisePlayer } from '../../components/WhiteNoisePlayer';
+import { HumorBanner } from '../../components/HumorBanner';
 import { ReviewPlaceholders, RatingEmojis } from '../../constants/ratings';
 import type { Restroom, Review } from '../../types';
 import { getPanicLevel } from '../../types';
@@ -83,6 +85,8 @@ export default function RestroomDetailScreen() {
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
+      <HumorBanner screen={restroom.overall >= 3.5 ? 'detail_good' : restroom.overall >= 2.5 ? 'detail_mid' : 'detail_bad'} />
+
       {/* Header */}
       <View style={[styles.header, { borderLeftColor: PanicColors[panicLevel] }]}>
         <Text style={styles.name}>{restroom.name}</Text>
@@ -123,6 +127,11 @@ export default function RestroomDetailScreen() {
         <RatingBadge category="cleanliness" value={restroom.cleanliness} />
         <RatingBadge category="privacy" value={restroom.privacy} />
         <RatingBadge category="soundproofing" value={restroom.soundproofing} />
+      </View>
+
+      {/* White Noise */}
+      <View style={styles.section}>
+        <WhiteNoisePlayer />
       </View>
 
       {/* Reviews */}
