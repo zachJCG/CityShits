@@ -96,10 +96,13 @@ export function WebMap({ restrooms, onRestroomPress, userLocation, interactive =
       const map = L.map(mapContainerRef.current, {
         center,
         zoom: 14,
-        zoomControl: true,
+        zoomControl: interactive,
         scrollWheelZoom: interactive,
         dragging: interactive,
-        touchZoom: true,
+        touchZoom: interactive,
+        doubleClickZoom: interactive,
+        boxZoom: interactive,
+        keyboard: interactive,
       });
 
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -184,7 +187,12 @@ export function WebMap({ restrooms, onRestroomPress, userLocation, interactive =
   return (
     <div
       ref={(el: HTMLDivElement | null) => { mapContainerRef.current = el; }}
-      style={{ width: '100%', height: '100%', minHeight: 300 }}
+      style={{
+        width: '100%',
+        height: '100%',
+        minHeight: 250,
+        touchAction: interactive ? 'none' : 'pan-y',
+      }}
     />
   );
 }

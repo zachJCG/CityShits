@@ -138,8 +138,9 @@ const styles = StyleSheet.create({
   title: { fontSize: 32, fontWeight: 'bold', color: Colors.red, textAlign: 'center', marginBottom: 8 },
   subtitle: { fontSize: 15, color: '#FFAAAA', textAlign: 'center', marginBottom: 40, fontStyle: 'italic' },
   panicButton: {
-    width: 220, height: 220, borderRadius: 110, backgroundColor: Colors.red,
-    justifyContent: 'center', alignItems: 'center',
+    width: 200, height: 200, maxWidth: '55vw' as any, maxHeight: '55vw' as any,
+    borderRadius: 9999, backgroundColor: Colors.red,
+    justifyContent: 'center', alignItems: 'center', aspectRatio: 1,
     shadowColor: Colors.red, shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.6, shadowRadius: 30, elevation: 10,
   },
@@ -150,8 +151,8 @@ const styles = StyleSheet.create({
   searchEmoji: { fontSize: 64, marginBottom: 16 },
   searchText: { fontSize: 20, fontWeight: 'bold', color: Colors.yellow },
   resultCard: {
-    backgroundColor: Colors.white, borderRadius: 20, padding: 24,
-    width: '100%', maxWidth: 400, alignItems: 'center',
+    backgroundColor: Colors.white, borderRadius: 20, padding: 20,
+    width: '100%', maxWidth: 400, alignSelf: 'center', alignItems: 'center',
   },
   resultLabel: { fontSize: 12, fontWeight: 'bold', color: Colors.green, letterSpacing: 2, marginBottom: 8 },
   resultName: { fontSize: 22, fontWeight: 'bold', color: Colors.brown, textAlign: 'center', marginBottom: 12 },

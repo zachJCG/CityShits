@@ -65,7 +65,7 @@ export default function MapScreen() {
             {([['#4CAF50', 'Safe'], ['#FF9800', 'Meh'], ['#F44336', 'Yikes']] as const).map(([c, l]) => (
               <span key={l} style={S.legendItem}>
                 <span style={{ ...S.legendDot, background: c }} />
-                <span style={S.legendLabel}>{l}</span>
+                {isWide && <span style={S.legendLabel}>{l}</span>}
               </span>
             ))}
           </div>
@@ -180,7 +180,6 @@ const S: Record<string, React.CSSProperties> = {
     display: 'flex',
     flexDirection: 'column',
     height: '100vh',
-    overflow: 'hidden',
     background: '#FAF6F1',
     fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
   },
@@ -222,23 +221,29 @@ const S: Record<string, React.CSSProperties> = {
     display: 'flex',
     flexDirection: 'row',
     flex: 1,
+    minHeight: 0,
     overflow: 'hidden',
   } as React.CSSProperties,
 
   // Narrow: single scrollable column
   mainNarrow: {
     flex: 1,
+    minHeight: 0,
     overflowY: 'auto',
     WebkitOverflowScrolling: 'touch',
   } as React.CSSProperties,
 
   // Map
   mapWide: { flex: 1, minHeight: 0 },
-  mapNarrow: { height: '55vh', minHeight: 280 },
+  mapNarrow: {
+    height: 'clamp(250px, 40vh, 380px)',
+    position: 'relative',
+    flexShrink: 0,
+  } as React.CSSProperties,
 
   // List (wide only — narrow cards just flow in the scroll)
   listWide: {
-    width: 360,
+    width: 'clamp(300px, 30vw, 400px)',
     flexShrink: 0,
     overflowY: 'auto',
     borderLeft: `1px solid ${Colors.grayLight}`,

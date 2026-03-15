@@ -191,7 +191,7 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.background,
   },
   content: {
-    padding: 16,
+    padding: 14,
     maxWidth: 700,
     alignSelf: 'center',
     width: '100%',
